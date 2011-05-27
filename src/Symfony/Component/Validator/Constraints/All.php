@@ -15,21 +15,13 @@ class All extends \Symfony\Component\Validator\Constraint
 {
     public $constraints = array();
 
-    public function defaultOption()
+    public function getDefaultOption()
     {
         return 'constraints';
     }
 
-    public function requiredOptions()
+    public function getRequiredOptions()
     {
         return array('constraints');
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function targets()
-    {
-        return self::PROPERTY_CONSTRAINT;
     }
 }

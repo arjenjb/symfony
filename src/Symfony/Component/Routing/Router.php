@@ -22,14 +22,15 @@ use Symfony\Component\Config\ConfigCache;
  */
 class Router implements RouterInterface
 {
-    protected $matcher;
-    protected $generator;
+    private $matcher;
+    private $generator;
+    private $defaults;
+    private $context;
+    private $loader;
+    private $collection;
+    private $resource;
+
     protected $options;
-    protected $defaults;
-    protected $context;
-    protected $loader;
-    protected $collection;
-    protected $resource;
 
     /**
      * Constructor.
@@ -40,19 +41,19 @@ class Router implements RouterInterface
      *   * debug:         Whether to enable debugging or not (false by default)
      *   * resource_type: Type hint for the main resource (optional)
      *
-     * @param LoaderInterface $loader A LoaderInterface instance
+     * @param LoaderInterface $loader   A LoaderInterface instance
      * @param mixed           $resource The main resource to load
      * @param array           $options  An array of options
-     * @param array           $context  The context
+     * @param RequestContext  $context  The context
      * @param array           $defaults The default values
      *
      * @throws \InvalidArgumentException When unsupported option is provided
      */
-    public function __construct(LoaderInterface $loader, $resource, array $options = array(), array $context = array(), array $defaults = array())
+    public function __construct(LoaderInterface $loader, $resource, array $options = array(), RequestContext $context = null, array $defaults = array())
     {
         $this->loader = $loader;
         $this->resource = $resource;
-        $this->context = $context;
+        $this->context = null === $context ? new RequestContext() : $context;
         $this->defaults = $defaults;
         $this->options = array(
             'cache_dir'              => null,
@@ -68,12 +69,21 @@ class Router implements RouterInterface
             'resource_type'          => null,
         );
 
-        // check option names
-        if ($diff = array_diff(array_keys($options), array_keys($this->options))) {
-            throw new \InvalidArgumentException(sprintf('The Router does not support the following options: \'%s\'.', implode('\', \'', $diff)));
+        // check option names and live merge, if errors are encountered Exception will be thrown
+        $invalid = array();
+        $isInvalid = false;
+        foreach ($options as $key => $value) {
+            if (array_key_exists($key, $this->options)) {
+                $this->options[$key] = $value;
+            } else {
+                $isInvalid = true;
+                $invalid[] = $key;
+            }
         }
 
-        $this->options = array_merge($this->options, $options);
+        if ($isInvalid) {
+            throw new \InvalidArgumentException(sprintf('The Router does not support the following options: \'%s\'.', implode('\', \'', $invalid)));
+        }
     }
 
     /**
@@ -93,12 +103,24 @@ class Router implements RouterInterface
     /**
      * Sets the request context.
      *
-     * @param array $context  The context
+     * @param RequestContext $context The context
      */
-    public function setContext(array $context = array())
+    public function setContext(RequestContext $context)
     {
+        $this->context = $context;
+
         $this->getMatcher()->setContext($context);
         $this->getGenerator()->setContext($context);
+    }
+
+    /**
+     * Gets the request context.
+     *
+     * @return RequestContext The context
+     */
+    public function getContext()
+    {
+        return $this->context;
     }
 
     /**
@@ -145,7 +167,7 @@ class Router implements RouterInterface
         }
 
         $class = $this->options['matcher_cache_class'];
-        $cache = new ConfigCache($this->options['cache_dir'], $class, $this->options['debug']);
+        $cache = new ConfigCache($this->options['cache_dir'].'/'.$class.'.php', $this->options['debug']);
         if (!$cache->isFresh($class)) {
             $dumper = new $this->options['matcher_dumper_class']($this->getRouteCollection());
 
@@ -178,7 +200,7 @@ class Router implements RouterInterface
         }
 
         $class = $this->options['generator_cache_class'];
-        $cache = new ConfigCache($this->options['cache_dir'], $class, $this->options['debug']);
+        $cache = new ConfigCache($this->options['cache_dir'].'/'.$class.'.php', $this->options['debug']);
         if (!$cache->isFresh($class)) {
             $dumper = new $this->options['generator_dumper_class']($this->getRouteCollection());
 

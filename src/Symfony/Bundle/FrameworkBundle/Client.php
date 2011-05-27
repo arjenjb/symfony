@@ -14,8 +14,6 @@ namespace Symfony\Bundle\FrameworkBundle;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\Client as BaseClient;
-use Symfony\Component\BrowserKit\History;
-use Symfony\Component\BrowserKit\CookieJar;
 use Symfony\Component\HttpKernel\Profiler\Profiler as HttpProfiler;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,22 +25,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class Client extends BaseClient
 {
-    protected $container;
-
-    /**
-     * Constructor.
-     *
-     * @param HttpKernelInterface $kernel    An HttpKernelInterface instance
-     * @param array               $server    The server parameters (equivalent of $_SERVER)
-     * @param History             $history   A History instance to store the browser history
-     * @param CookieJar           $cookieJar A CookieJar instance to store the cookies
-     */
-    public function __construct(HttpKernelInterface $kernel, array $server = array(), History $history = null, CookieJar $cookieJar = null)
-    {
-        parent::__construct($kernel, $server, $history, $cookieJar);
-
-        $this->container = $kernel->getContainer();
-    }
+    private $hasPerformedRequest = false;
 
     /**
      * Returns the container.
@@ -51,7 +34,7 @@ class Client extends BaseClient
      */
     public function getContainer()
     {
-        return $this->container;
+        return $this->kernel->getContainer();
     }
 
     /**
@@ -71,11 +54,11 @@ class Client extends BaseClient
      */
     public function getProfiler()
     {
-        if (!$this->container->has('profiler')) {
+        if (!$this->kernel->getContainer()->has('profiler')) {
             return false;
         }
 
-        return $this->container->get('profiler')->loadFromResponse($this->response);
+        return $this->kernel->getContainer()->get('profiler')->loadFromResponse($this->response);
     }
 
     /**
@@ -87,10 +70,15 @@ class Client extends BaseClient
      */
     protected function doRequest($request)
     {
-        $returnValue = $this->kernel->handle($request);
-        $this->kernel->shutdown();
+        // avoid shutting down the Kernel if no request has been performed yet
+        // WebTestCase::createClient() boots the Kernel but do not handle a request
+        if ($this->hasPerformedRequest) {
+            $this->kernel->shutdown();
+        } else {
+            $this->hasPerformedRequest = true;
+        }
 
-        return $returnValue;
+        return $this->kernel->handle($request);
     }
 
     /**

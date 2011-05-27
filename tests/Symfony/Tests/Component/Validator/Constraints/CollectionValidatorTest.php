@@ -9,7 +9,7 @@
  * file that was distributed with this source code.
  */
 
-namespace Symfony\Tests\Component\Validator;
+namespace Symfony\Tests\Component\Validator\Constraints;
 
 use Symfony\Component\Validator\ExecutionContext;
 use Symfony\Component\Validator\Constraints\Min;
@@ -38,6 +38,13 @@ class CollectionValidatorTest extends \PHPUnit_Framework_TestCase
         $this->assertTrue($this->validator->isValid(null, new Collection(array('fields' => array(
             'foo' => new Min(4),
         )))));
+    }
+
+    public function testFieldsAsDefaultOption()
+    {
+        $this->validator->isValid(array('foo' => 'foobar'), new Collection(array(
+            'foo' => new Min(4),
+        )));
     }
 
     public function testThrowsExceptionIfNotTraversable()

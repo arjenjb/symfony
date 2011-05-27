@@ -5,24 +5,24 @@ namespace Symfony\Tests\Component\Validator\Fixtures;
 require_once __DIR__.'/EntityParent.php';
 require_once __DIR__.'/EntityInterface.php';
 
+use Symfony\Component\Validator\Constraints as Assert;
+
 /**
  * @Symfony\Tests\Component\Validator\Fixtures\ConstraintA
- * @validation:GroupSequence({"Foo", "Entity"})
+ * @Assert\GroupSequence({"Foo", "Entity"})
  */
 class Entity extends EntityParent implements EntityInterface
 {
     /**
-     * @validation:NotNull
-     * @validation:Min(3)
-     * @validation:Set({
-     *   @validation:All({@validation:NotNull, @validation:Min(3)}),
-     *   @validation:All(constraints={@validation:NotNull, @validation:Min(3)})
+     * @Assert\NotNull
+     * @Assert\Min(3)
+     * @Assert\All({@Assert\NotNull, @Assert\Min(3)}),
+     * @Assert\All(constraints={@Assert\NotNull, @Assert\Min(3)})
+     * @Assert\Collection(fields={
+     *   "foo" = {@Assert\NotNull, @Assert\Min(3)},
+     *   "bar" = @Assert\Min(5)
      * })
-     * @validation:Collection(fields={
-     *   "foo" = {@validation:NotNull, @validation:Min(3)},
-     *   "bar" = @validation:Min(5)
-     * })
-     * @validation:Choice(choices={"A", "B"}, message="Must be one of %choices%")
+     * @Assert\Choice(choices={"A", "B"}, message="Must be one of %choices%")
      */
     protected $firstName;
     protected $lastName;
@@ -41,7 +41,7 @@ class Entity extends EntityParent implements EntityInterface
     }
 
     /**
-     * @validation:NotNull
+     * @Assert\NotNull
      */
     public function getLastName()
     {

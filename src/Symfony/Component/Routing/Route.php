@@ -18,22 +18,20 @@ namespace Symfony\Component\Routing;
  */
 class Route
 {
-    protected $pattern;
-    protected $defaults;
-    protected $requirements;
-    protected $options;
-    protected $compiled;
+    private $pattern;
+    private $defaults;
+    private $requirements;
+    private $options;
+    private $compiled;
 
-    static protected $compilers = array();
+    static private $compilers = array();
 
     /**
      * Constructor.
      *
      * Available options:
      *
-     *  * segment_separators: An array of allowed characters for segment separators (/ by default)
-     *  * text_regex:         A regex that match a valid text name (.+? by default)
-     *  * compiler_class:     A class name able to compile this route instance (RouteCompiler by default)
+     *  * compiler_class: A class name able to compile this route instance (RouteCompiler by default)
      *
      * @param string $pattern       The pattern to match
      * @param array  $defaults      An array of default parameter values
@@ -101,10 +99,25 @@ class Route
     public function setOptions(array $options)
     {
         $this->options = array_merge(array(
-            'segment_separators' => array('/', '.'),
-            'text_regex'         => '.+?',
-            'compiler_class'     => 'Symfony\\Component\\Routing\\RouteCompiler',
+            'compiler_class' => 'Symfony\\Component\\Routing\\RouteCompiler',
         ), $options);
+
+        return $this;
+    }
+
+    /**
+     * Sets an option value.
+     *
+     * This method implements a fluent interface.
+     *
+     * @param string $name  An option name
+     * @param mixed  $value The option value
+     *
+     * @return Route The current Route instance
+     */
+    public function setOption($name, $value)
+    {
+        $this->options[$name] = $value;
 
         return $this;
     }
@@ -160,14 +173,30 @@ class Route
     }
 
     /**
+     * Checks if a default value is set for the given variable.
+     *
+     * @param string $name A variable name
+     *
+     * @return Boolean true if the default value is set, false otherwise
+     */
+    public function hasDefault($name)
+    {
+        return array_key_exists($name, $this->defaults);
+    }
+
+    /**
      * Sets a default value.
      *
      * @param string $name    A variable name
      * @param mixed  $default The default value
+     *
+     * @return Route The current Route instance
      */
     public function setDefault($name, $default)
     {
         $this->defaults[$name] = $default;
+
+        return $this;
     }
 
     /**
@@ -202,6 +231,7 @@ class Route
     /**
      * Returns the requirement for the given key.
      *
+     * @param string $key The key
      * @return string The regex
      */
     public function getRequirement($key)
@@ -212,12 +242,16 @@ class Route
     /**
      * Sets a requirement for the given key.
      *
-     * @param string The key
-     * @param string The regex
+     * @param string $key The key
+     * @param string $regex The regex
+     *
+     * @return Route The current Route instance
      */
     public function setRequirement($key, $regex)
     {
-        return $this->requirements[$key] = $this->sanitizeRequirement($key, $regex);
+        $this->requirements[$key] = $this->sanitizeRequirement($key, $regex);
+
+        return $this;
     }
 
     /**
@@ -240,7 +274,7 @@ class Route
         return $this->compiled = static::$compilers[$class]->compile($this);
     }
 
-    protected function sanitizeRequirement($key, $regex)
+    private function sanitizeRequirement($key, $regex)
     {
         if (is_array($regex)) {
             throw new \InvalidArgumentException(sprintf('Routing requirements must be a string, array given for "%s"', $key));

@@ -19,7 +19,7 @@ class Min extends \Symfony\Component\Validator\Constraint
     /**
      * {@inheritDoc}
      */
-    public function defaultOption()
+    public function getDefaultOption()
     {
         return 'limit';
     }
@@ -27,16 +27,8 @@ class Min extends \Symfony\Component\Validator\Constraint
     /**
      * {@inheritDoc}
      */
-    public function requiredOptions()
+    public function getRequiredOptions()
     {
         return array('limit');
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function targets()
-    {
-        return self::PROPERTY_CONSTRAINT;
     }
 }

@@ -11,35 +11,66 @@
 
 namespace Symfony\Bundle\AsseticBundle\Templating;
 
+use Assetic\Asset\AssetInterface;
 use Assetic\Factory\AssetFactory;
+use Assetic\Util\TraversableString;
 use Symfony\Component\Templating\Helper\Helper;
 
 /**
  * The "assetic" templating helper.
  *
- * @author Kris Wallsmith <kris.wallsmith@symfony.com>
+ * @author Kris Wallsmith <kris@symfony.com>
  */
-class AsseticHelper extends Helper
+abstract class AsseticHelper extends Helper
 {
     protected $factory;
-    protected $debug;
-    protected $defaultJavascriptsOutput;
-    protected $defaultStylesheetsOutput;
 
     /**
      * Constructor.
      *
-     * @param AssetFactory $factory                  The asset factory
-     * @param Boolean      $debug                    The debug mode
-     * @param string       $defaultJavascriptsOutput The default {@link javascripts()} output string
-     * @param string       $defaultStylesheetsOutput The default {@link stylesheets()} output string
+     * @param AssetFactory $factory The asset factory
      */
-    public function __construct(AssetFactory $factory, $debug = false, $defaultJavascriptsOutput = 'js/*.js', $defaultStylesheetsOutput = 'css/*.css')
+    public function __construct(AssetFactory $factory)
     {
         $this->factory = $factory;
-        $this->debug = $debug;
-        $this->defaultJavascriptsOutput = $defaultJavascriptsOutput;
-        $this->defaultStylesheetsOutput = $defaultStylesheetsOutput;
+    }
+
+    /**
+     * Returns an array of javascript urls.
+     */
+    public function javascripts($inputs = array(), $filters = array(), array $options = array())
+    {
+        if (!isset($options['output'])) {
+            $options['output'] = 'js/*.js';
+        }
+
+        return $this->getAssetUrls($inputs, $filters, $options);
+    }
+
+    /**
+     * Returns an array of stylesheet urls.
+     */
+    public function stylesheets($inputs = array(), $filters = array(), array $options = array())
+    {
+        if (!isset($options['output'])) {
+            $options['output'] = 'css/*.css';
+        }
+
+        return $this->getAssetUrls($inputs, $filters, $options);
+    }
+
+    /**
+     * Returns an array of one image url.
+     */
+    public function image($inputs = array(), $filters = array(), array $options = array())
+    {
+        if (!isset($options['output'])) {
+            $options['output'] = 'images/*';
+        }
+
+        $options['single'] = true;
+
+        return $this->getAssetUrls($inputs, $filters, $options);
     }
 
     /**
@@ -60,7 +91,7 @@ class AsseticHelper extends Helper
      *
      * @return array An array of URLs for the asset
      */
-    public function assets($inputs = array(), $filters = array(), array $options = array())
+    private function getAssetUrls($inputs = array(), $filters = array(), array $options = array())
     {
         $explode = function($value)
         {
@@ -76,52 +107,48 @@ class AsseticHelper extends Helper
         }
 
         if (!isset($options['debug'])) {
-            $options['debug'] = $this->debug;
+            $options['debug'] = $this->factory->isDebug();
         }
 
-        $coll = $this->factory->createAsset($inputs, $filters, $options);
-
-        if (!$options['debug']) {
-            return array($coll->getTargetUrl());
+        if (!isset($options['combine'])) {
+            $options['combine'] = !$options['debug'];
         }
 
-        $urls = array();
-        foreach ($coll as $leaf) {
-            $urls[] = $leaf->getTargetUrl();
+        if (isset($options['single']) && $options['single'] && 1 < count($inputs)) {
+            $inputs = array_slice($inputs, -1);
         }
 
-        return $urls;
+        if (!isset($options['name'])) {
+            $options['name'] = $this->factory->generateAssetName($inputs, $filters, $options);
+        }
+
+        $asset = $this->factory->createAsset($inputs, $filters, $options);
+
+        $one = $this->getAssetUrl($asset, $options);
+        $many = array();
+        if ($options['combine']) {
+            $many[] = $one;
+        } else {
+            $i = 0;
+            foreach ($asset as $leaf) {
+                $many[] = $this->getAssetUrl($leaf, array_replace($options, array(
+                    'name' => $options['name'].'_'.$i++,
+                )));
+            }
+        }
+
+        return new TraversableString($one, $many);
     }
 
     /**
-     * Returns an array of javascript urls.
+     * Returns an URL for the supplied asset.
      *
-     * This convenience method wraps {@link assets()} and provides a default
-     * output string.
-     */
-    public function javascripts($inputs = array(), $filters = array(), array $options = array())
-    {
-        if (!isset($options['output'])) {
-            $options['output'] = $this->defaultJavascriptsOutput;
-        }
-
-        return $this->assets($inputs, $filters, $options);
-    }
-
-    /**
-     * Returns an array of stylesheet urls.
+     * @param AssetInterface $asset   An asset
+     * @param array          $options An array of options
      *
-     * This convenience method wraps {@link assets()} and provides a default
-     * output string.
+     * @return string An echo-ready URL
      */
-    public function stylesheets($inputs = array(), $filters = array(), array $options = array())
-    {
-        if (!isset($options['output'])) {
-            $options['output'] = $this->defaultStylesheetsOutput;
-        }
-
-        return $this->assets($inputs, $filters, $options);
-    }
+    abstract protected function getAssetUrl(AssetInterface $asset, $options = array());
 
     public function getName()
     {

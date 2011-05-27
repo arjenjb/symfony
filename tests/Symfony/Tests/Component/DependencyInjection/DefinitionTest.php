@@ -201,7 +201,7 @@ class DefinitionTest extends \PHPUnit_Framework_TestCase
     }
 
     /**
-     * @covers Symfony\Component\DependencyInjection\Definition::setArgument
+     * @covers Symfony\Component\DependencyInjection\Definition::replaceArgument
      */
     public function testSetArgument()
     {
@@ -210,14 +210,32 @@ class DefinitionTest extends \PHPUnit_Framework_TestCase
         $def->addArgument('foo');
         $this->assertSame(array('foo'), $def->getArguments());
 
-        $this->assertSame($def, $def->setArgument(0, 'moo'));
+        $this->assertSame($def, $def->replaceArgument(0, 'moo'));
         $this->assertSame(array('moo'), $def->getArguments());
 
         $def->addArgument('moo');
         $def
-            ->setArgument(0, 'foo')
-            ->setArgument(1, 'bar')
+            ->replaceArgument(0, 'foo')
+            ->replaceArgument(1, 'bar')
         ;
         $this->assertSame(array('foo', 'bar'), $def->getArguments());
+    }
+
+    public function testSetGetProperties()
+    {
+        $def = new Definition('stdClass');
+
+        $this->assertEquals(array(), $def->getProperties());
+        $this->assertSame($def, $def->setProperties(array('foo' => 'bar')));
+        $this->assertEquals(array('foo' => 'bar'), $def->getProperties());
+    }
+
+    public function testSetProperty()
+    {
+        $def = new Definition('stdClass');
+
+        $this->assertEquals(array(), $def->getProperties());
+        $this->assertSame($def, $def->setProperty('foo', 'bar'));
+        $this->assertEquals(array('foo' => 'bar'), $def->getProperties());
     }
 }

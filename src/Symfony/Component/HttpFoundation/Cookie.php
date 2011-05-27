@@ -41,9 +41,15 @@ class Cookie
             throw new \InvalidArgumentException('The cookie name cannot be empty');
         }
 
-        // check if the expiration is valid
-        if (!$expire instanceof \DateTime && !is_numeric($expire) && (strtotime($expire) === false || strtotime($expire) === -1)) {
-            throw new \InvalidArgumentException('The cookie expiration is not valid');
+        // convert expiration time to a Unix timestamp
+        if ($expire instanceof \DateTime) {
+            $expire = $expire->format('U');
+        } elseif (!is_numeric($expire)) {
+            $expire = strtotime($expire);
+
+            if (false === $expire || -1 === $expire) {
+                throw new \InvalidArgumentException('The cookie expiration time is not valid.');
+            }
         }
 
         $this->name = $name;
@@ -53,6 +59,39 @@ class Cookie
         $this->path = $path;
         $this->secure = (Boolean) $secure;
         $this->httpOnly = (Boolean) $httpOnly;
+    }
+
+    public function __toString()
+    {
+        $str = urlencode($this->getName()).'=';
+
+        if ('' === (string) $this->getValue()) {
+            $str .= 'deleted; expires='.gmdate("D, d-M-Y H:i:s T", time() - 31536001);
+        } else {
+            $str .= urlencode($this->getValue());
+
+            if ($this->getExpiresTime() !== 0) {
+                $str .= '; expires='.gmdate("D, d-M-Y H:i:s T", $this->getExpiresTime());
+            }
+        }
+
+        if (null !== $this->getPath()) {
+            $str .= '; path='.$this->getPath();
+        }
+
+        if (null !== $this->getDomain()) {
+            $str .= '; domain='.$this->getDomain();
+        }
+
+        if (true === $this->isSecure()) {
+            $str .= '; secure';
+        }
+
+        if (true === $this->isHttpOnly()) {
+            $str .= '; httponly';
+        }
+
+        return $str;
     }
 
     public function getName()
@@ -70,7 +109,7 @@ class Cookie
         return $this->domain;
     }
 
-    public function getExpire()
+    public function getExpiresTime()
     {
         return $this->expire;
     }

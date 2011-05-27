@@ -20,7 +20,7 @@ class Regex extends \Symfony\Component\Validator\Constraint
     /**
      * {@inheritDoc}
      */
-    public function defaultOption()
+    public function getDefaultOption()
     {
         return 'pattern';
     }
@@ -28,16 +28,8 @@ class Regex extends \Symfony\Component\Validator\Constraint
     /**
      * {@inheritDoc}
      */
-    public function requiredOptions()
+    public function getRequiredOptions()
     {
         return array('pattern');
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    public function targets()
-    {
-        return self::PROPERTY_CONSTRAINT;
     }
 }

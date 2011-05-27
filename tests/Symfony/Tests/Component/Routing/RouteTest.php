@@ -41,8 +41,6 @@ class RouteTest extends \PHPUnit_Framework_TestCase
         $route = new Route('/{foo}');
         $route->setOptions(array('foo' => 'bar'));
         $this->assertEquals(array_merge(array(
-        'segment_separators' => array('/', '.'),
-        'text_regex'         => '.+?',
         'compiler_class'     => 'Symfony\\Component\\Routing\\RouteCompiler',
         ), array('foo' => 'bar')), $route->getOptions(), '->setOptions() sets the options');
         $this->assertEquals($route, $route->setOptions(array()), '->setOptions() implements a fluent interface');
@@ -79,10 +77,13 @@ class RouteTest extends \PHPUnit_Framework_TestCase
         $route->setRequirements(array('foo' => '^\d+$'));
         $this->assertEquals('\d+', $route->getRequirement('foo'), '->getRequirement() removes ^ and $ from the pattern');
         $this->assertEquals($route, $route->setRequirements(array()), '->setRequirements() implements a fluent interface');
+    }
 
-        // test that an array requirement throws an exception
-        $this->setExpectedException('InvalidArgumentException');
-        $route->setRequirements(array('foo' => array('bar', 'baz')));
+    public function testRequirement()
+    {
+        $route = new Route('/{foo}');
+        $route->setRequirement('foo', '^\d+$');
+        $this->assertEquals('\d+', $route->getRequirement('foo'), '->setRequirement() removes ^ and $ from the pattern');
     }
 
     public function testCompile()

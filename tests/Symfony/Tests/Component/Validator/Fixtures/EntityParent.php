@@ -2,13 +2,15 @@
 
 namespace Symfony\Tests\Component\Validator\Fixtures;
 
+use Symfony\Component\Validator\Constraints\NotNull;
+
 class EntityParent
 {
     protected $firstName;
     private $internal;
 
     /**
-     * @validation:NotNull
+     * @NotNull
      */
     protected $other;
 }

@@ -134,6 +134,17 @@ class FinderTest extends Iterator\RealIteratorTestCase
         $this->assertIterator($this->toAbsolute(array('foo', 'foo/bar.tmp', 'test.php', 'test.py', 'toto')), $finder->in(self::$tmpDir)->getIterator());
     }
 
+    public function testIgnoreDotFiles()
+    {
+        $finder = new Finder();
+        $this->assertSame($finder, $finder->ignoreDotFiles(false)->ignoreVCS(false));
+        $this->assertIterator($this->toAbsolute(array('.git', 'foo', 'foo/bar.tmp', 'test.php', 'test.py', 'toto')), $finder->in(self::$tmpDir)->getIterator());
+
+        $finder = new Finder();
+        $this->assertSame($finder, $finder->ignoreDotFiles(true));
+        $this->assertIterator($this->toAbsolute(array('foo', 'foo/bar.tmp', 'test.php', 'test.py', 'toto')), $finder->in(self::$tmpDir)->getIterator());
+    }
+
     public function testSortByName()
     {
         $finder = new Finder();
@@ -260,6 +271,29 @@ class FinderTest extends Iterator\RealIteratorTestCase
         sort($ref);
 
         $this->assertEquals($paths, $ref);
+    }
+
+    public function testAppendWithAFinder()
+    {
+        $finder = new Finder();
+        $finder->files()->in(self::$tmpDir.DIRECTORY_SEPARATOR.'foo');
+
+        $finder1 = new Finder();
+        $finder1->directories()->in(self::$tmpDir);
+
+        $finder->append($finder1);
+
+        $this->assertIterator($this->toAbsolute(array('foo', 'foo/bar.tmp', 'toto')), $finder->getIterator());
+    }
+
+    public function testAppendWithAnArray()
+    {
+        $finder = new Finder();
+        $finder->files()->in(self::$tmpDir.DIRECTORY_SEPARATOR.'foo');
+
+        $finder->append($this->toAbsolute(array('foo', 'toto')));
+
+        $this->assertIterator($this->toAbsolute(array('foo', 'foo/bar.tmp', 'toto')), $finder->getIterator());
     }
 
     protected function toAbsolute($files)

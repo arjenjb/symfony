@@ -13,6 +13,7 @@ namespace Symfony\Tests\Component\HttpKernel;
 
 use Symfony\Component\HttpKernel\HttpKernel;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
+use Symfony\Component\HttpKernel\Events;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -42,11 +43,9 @@ class HttpKernelTest extends \PHPUnit_Framework_TestCase
     public function testHandleWhenControllerThrowsAnExceptionAndRawIsFalse()
     {
         $dispatcher = new EventDispatcher();
-        $dispatcher->connect('core.exception', function ($event)
+        $dispatcher->addListener(Events::onCoreException, function ($event)
         {
-            $event->setProcessed();
-
-            return new Response($event->get('exception')->getMessage());
+            $event->setResponse(new Response($event->getException()->getMessage()));
         });
 
         $kernel = new HttpKernel($dispatcher, $this->getResolver(function () { throw new \RuntimeException('foo'); }));
@@ -57,11 +56,9 @@ class HttpKernelTest extends \PHPUnit_Framework_TestCase
     public function testHandleWhenAListenerReturnsAResponse()
     {
         $dispatcher = new EventDispatcher();
-        $dispatcher->connect('core.request', function ($event)
+        $dispatcher->addListener(Events::onCoreRequest, function ($event)
         {
-            $event->setProcessed();
-
-            return new Response('hello');
+            $event->setResponse(new Response('hello'));
         });
 
         $kernel = new HttpKernel($dispatcher, $this->getResolver());
@@ -91,8 +88,49 @@ class HttpKernelTest extends \PHPUnit_Framework_TestCase
         $kernel->handle(new Request());
     }
 
+    public function testHandleWhenNoControllerIsAClosure()
+    {
+        $response = new Response('foo');
+        $dispatcher = new EventDispatcher();
+        $kernel = new HttpKernel($dispatcher, $this->getResolver(function () use ($response) { return $response; }));
+
+        $this->assertSame($response, $kernel->handle(new Request()));
+    }
+
+    public function testHandleWhenNoControllerIsAnObjectWithInvoke()
+    {
+        $dispatcher = new EventDispatcher();
+        $kernel = new HttpKernel($dispatcher, $this->getResolver(new Controller()));
+
+        $this->assertEquals(new Response('foo'), $kernel->handle(new Request()));
+    }
+
+    public function testHandleWhenNoControllerIsAFunction()
+    {
+        $dispatcher = new EventDispatcher();
+        $kernel = new HttpKernel($dispatcher, $this->getResolver('Symfony\Tests\Component\HttpKernel\controller_func'));
+
+        $this->assertEquals(new Response('foo'), $kernel->handle(new Request()));
+    }
+
+    public function testHandleWhenNoControllerIsAnArray()
+    {
+        $dispatcher = new EventDispatcher();
+        $kernel = new HttpKernel($dispatcher, $this->getResolver(array(new Controller(), 'controller')));
+
+        $this->assertEquals(new Response('foo'), $kernel->handle(new Request()));
+    }
+
+    public function testHandleWhenNoControllerIsAStaticArray()
+    {
+        $dispatcher = new EventDispatcher();
+        $kernel = new HttpKernel($dispatcher, $this->getResolver(array('Symfony\Tests\Component\HttpKernel\Controller', 'staticcontroller')));
+
+        $this->assertEquals(new Response('foo'), $kernel->handle(new Request()));
+    }
+
     /**
-     * @expectedException RuntimeException
+     * @expectedException LogicException
      */
     public function testHandleWhenControllerDoesNotReturnAResponse()
     {
@@ -105,55 +143,21 @@ class HttpKernelTest extends \PHPUnit_Framework_TestCase
     public function testHandleWhenControllerDoesNotReturnAResponseButAViewIsRegistered()
     {
         $dispatcher = new EventDispatcher();
-        $dispatcher->connect('core.view', function ($event)
+        $dispatcher->addListener(Events::onCoreView, function ($event)
         {
-            $event->setProcessed();
-
-            return new Response($event->get('controller_value'));
+            $event->setResponse(new Response($event->getControllerResult()));
         });
         $kernel = new HttpKernel($dispatcher, $this->getResolver(function () { return 'foo'; }));
 
         $this->assertEquals('foo', $kernel->handle(new Request())->getContent());
     }
 
-    /**
-     * @expectedException RuntimeException
-     */
-    public function testHandleWhenAViewDoesNotReturnAResponse()
-    {
-        $dispatcher = new EventDispatcher();
-        $dispatcher->connect('core.view', function ($event)
-        {
-            $event->setProcessed();
-
-            return $event->get('controller_value');
-        });
-        $kernel = new HttpKernel($dispatcher, $this->getResolver(function () { return 'foo'; }));
-
-        $kernel->handle(new Request());
-    }
-
-    /**
-     * @expectedException RuntimeException
-     */
-    public function testHandleWhenAResponseListenerDoesNotReturnAResponse()
-    {
-        $dispatcher = new EventDispatcher();
-        $dispatcher->connect('core.response', function ($event, $response)
-        {
-            return 'foo';
-        });
-        $kernel = new HttpKernel($dispatcher, $this->getResolver());
-
-        $kernel->handle(new Request());
-    }
-
     public function testHandleWithAResponseListener()
     {
         $dispatcher = new EventDispatcher();
-        $dispatcher->connect('core.response', function ($event, $response)
+        $dispatcher->addListener(Events::onCoreResponse, function ($event)
         {
-            return new Response('foo');
+            $event->setResponse(new Response('foo'));
         });
         $kernel = new HttpKernel($dispatcher, $this->getResolver());
 
@@ -176,4 +180,27 @@ class HttpKernelTest extends \PHPUnit_Framework_TestCase
 
         return $resolver;
     }
+}
+
+class Controller
+{
+    public function __invoke()
+    {
+        return new Response('foo');
+    }
+
+    public function controller()
+    {
+        return new Response('foo');
+    }
+
+    static public function staticController()
+    {
+        return new Response('foo');
+    }
+}
+
+function controller_func()
+{
+    return new Response('foo');
 }
