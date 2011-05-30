@@ -18,6 +18,7 @@ use Symfony\Component\Security\Http\RememberMe\RememberMeServicesInterface;
 use Symfony\Component\Security\Core\SecurityContextInterface;
 use Symfony\Component\Security\Core\Authentication\AuthenticationManagerInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
+use Symfony\Component\Security\Core\Exception\SessionUnavailableException;
 use Symfony\Component\HttpKernel\Log\LoggerInterface;
 use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\Events as KernelEvents;
@@ -63,11 +64,16 @@ abstract class AbstractAuthenticationListener implements ListenerInterface
     /**
      * Constructor.
      *
-     * @param SecurityContextInterface       $securityContext       A SecurityContext instance
-     * @param AuthenticationManagerInterface $authenticationManager An AuthenticationManagerInterface instance
-     * @param array                          $options               An array of options for the processing of a successful, or failed authentication attempt
-     * @param LoggerInterface                $logger                A LoggerInterface instance
-     * @param EventDispatcherInterface       $dispatcher            An EventDispatcherInterface instance
+     * @param SecurityContextInterface               $securityContext       A SecurityContext instance
+     * @param AuthenticationManagerInterface         $authenticationManager An AuthenticationManagerInterface instance
+     * @param SessionAuthenticationStrategyInterface $sessionStrategy
+     * @param string                                 $providerKey
+     * @param array                                  $options               An array of options for the processing of a
+     *                                                                      successful, or failed authentication attempt
+     * @param AuthenticationSuccessHandlerInterface  $successHandler
+     * @param AuthenticationFailureHandlerInterface  $failureHandler
+     * @param LoggerInterface                        $logger                A LoggerInterface instance
+     * @param EventDispatcherInterface               $dispatcher            An EventDispatcherInterface instance
      */
     public function __construct(SecurityContextInterface $securityContext, AuthenticationManagerInterface $authenticationManager, SessionAuthenticationStrategyInterface $sessionStrategy, $providerKey, array $options = array(), AuthenticationSuccessHandlerInterface $successHandler = null, AuthenticationFailureHandlerInterface $failureHandler = null, LoggerInterface $logger = null, EventDispatcherInterface $dispatcher = null)
     {
@@ -121,6 +127,14 @@ abstract class AbstractAuthenticationListener implements ListenerInterface
         try {
             if (null === $returnValue = $this->attemptAuthentication($request)) {
                 return;
+            }
+
+            if (!$request->hasSession()) {
+                throw new \RuntimeException('This authentication method requires a session.');
+            }
+
+            if (!$request->hasPreviousSession()) {
+                throw new SessionUnavailableException('Your session has timed-out, or you have disabled cookies.');
             }
 
             if ($returnValue instanceof TokenInterface) {
@@ -222,7 +236,7 @@ abstract class AbstractAuthenticationListener implements ListenerInterface
         if (null !== $this->successHandler) {
             $response = $this->successHandler->onAuthenticationSuccess($request, $token);
         } else {
-            $path = $this->determineTargetUrl($request);
+            $path = str_replace('{_locale}', $session->getLocale(), $this->determineTargetUrl($request));
             $response = new RedirectResponse(0 !== strpos($path, 'http') ? $request->getUriForPath($path) : $path, 302);
         }
 
