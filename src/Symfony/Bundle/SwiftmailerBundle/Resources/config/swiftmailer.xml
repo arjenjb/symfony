@@ -16,7 +16,7 @@
         <parameter key="swiftmailer.plugin.blackhole.class">Swift_Plugins_BlackholePlugin</parameter>
         <parameter key="swiftmailer.plugin.messagelogger.class">Symfony\Bundle\SwiftmailerBundle\Logger\MessageLogger</parameter>
         <parameter key="swiftmailer.plugin.antiflood.class">Swift_Plugins_AntiFloodPlugin</parameter>
-
+        <parameter key="swiftmailer.plugin.impersonate.class">Symfony\Bundle\SwiftmailerBundle\Plugin\ImpersonateSenderPlugin</parameter>
         <parameter key="swiftmailer.data_collector.class">Symfony\Bundle\SwiftmailerBundle\DataCollector\MessageDataCollector</parameter>
     </parameters>
 
@@ -70,6 +70,10 @@
             <argument>%swiftmailer.antiflood.sleep%</argument>
         </service>
 
+        <service id="swiftmailer.plugin.impersonate" class="%swiftmailer.plugin.impersonate.class%" public="false">
+            <argument>%swiftmailer.sender_address%</argument>
+        </service>
+             
         <service id="swiftmailer.plugin.messagelogger" class="%swiftmailer.plugin.messagelogger.class%" />
 
         <service id="swiftmailer.data_collector" class="%swiftmailer.data_collector.class%" public="false">

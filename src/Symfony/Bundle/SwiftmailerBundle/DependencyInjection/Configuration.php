@@ -86,6 +86,7 @@ class Configuration implements ConfigurationInterface
                         ->scalarNode('sleep')->defaultValue(0)->end()
                     ->end()
                 ->end()
+                ->scalarNode('sender_address')->end()
                 ->scalarNode('delivery_address')->end()
                 ->booleanNode('disable_delivery')->end()
                 ->booleanNode('logging')->defaultValue($this->debug)->end()
